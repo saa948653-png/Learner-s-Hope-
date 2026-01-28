@@ -15,8 +15,8 @@ import {
   Bell,
   Search
 } from 'lucide-react';
-import { User, UserRole, ExamAttempt, Flashcard, Doubt, Exam } from './types';
-import { MOCK_USER, MOCK_EXAMS } from './services/mockData';
+import { User, UserRole } from './types.ts';
+import { MOCK_USER } from './services/mockData.ts';
 
 // --- Context & Auth ---
 interface AuthContextType {
@@ -34,14 +34,14 @@ export const useAuth = () => {
 };
 
 // --- Pages ---
-import Dashboard from './pages/Dashboard';
-import ExamList from './pages/ExamList';
-import ExamSession from './pages/ExamSession';
-import ResultPage from './pages/ResultPage';
-import HistoryPage from './pages/HistoryPage';
-import FlashcardsPage from './pages/FlashcardsPage';
-import DoubtsPage from './pages/DoubtsPage';
-import LoginPage from './pages/LoginPage';
+import Dashboard from './pages/Dashboard.tsx';
+import ExamList from './pages/ExamList.tsx';
+import ExamSession from './pages/ExamSession.tsx';
+import ResultPage from './pages/ResultPage.tsx';
+import HistoryPage from './pages/HistoryPage.tsx';
+import FlashcardsPage from './pages/FlashcardsPage.tsx';
+import DoubtsPage from './pages/DoubtsPage.tsx';
+import LoginPage from './pages/LoginPage.tsx';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
@@ -180,7 +180,6 @@ export default function App() {
   const [isAppLoading, setIsAppLoading] = useState(true);
 
   useEffect(() => {
-    // Initial boot sequence
     const timer = setTimeout(() => setIsAppLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);
