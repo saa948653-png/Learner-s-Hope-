@@ -1,117 +1,84 @@
 
-import React from 'react';
-import { History, Award, Calendar, Search, Filter, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { History, Calendar, Search, Filter, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ExamAttempt } from '../types';
-import { MOCK_EXAMS } from '../services/mockData';
+import { ExamAttempt } from '../types.ts';
+import { MOCK_EXAMS } from '../services/mockData.ts';
+import { useAuth } from '../App.tsx';
+import { db } from '../services/firebase.ts';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
 export default function HistoryPage() {
-  const attempts: ExamAttempt[] = JSON.parse(localStorage.getItem('studyflow_attempts') || '[]');
+  const { user } = useAuth();
+  const [attempts, setAttempts] = useState<ExamAttempt[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!user) return;
+      try {
+        const q = query(collection(db, "attempts"), where("userId", "==", user.id), orderBy("completedAt", "desc"));
+        const snap = await getDocs(q);
+        setAttempts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExamAttempt)));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [user]);
+
+  if (loading) return <div className="p-24 text-center font-bold text-slate-400">Loading Cloud Archives...</div>;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Exam History</h1>
-          <p className="text-slate-500">Review your past performance and improvements.</p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search exams..." 
-              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none w-full md:w-64"
-            />
-          </div>
-          <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50">
-            <Filter size={20} />
-          </button>
+          <h1 className="text-2xl font-black text-slate-900">Cloud Exam History</h1>
+          <p className="text-slate-500 font-medium">Verified historical performance logs.</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Exam Details</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Date</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Score</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Accuracy</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-widest">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {attempts.length > 0 ? [...attempts].reverse().map((attempt) => {
-              const exam = MOCK_EXAMS.find(e => e.id === attempt.examId);
-              const accuracy = Math.round((attempt.score / attempt.maxScore) * 100);
-              
-              return (
-                <tr key={attempt.id} className="hover:bg-slate-50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold">
-                        {exam?.category[0]}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900">{exam?.title || 'Unknown Exam'}</p>
-                        <p className="text-xs text-slate-400">ID: {attempt.id.slice(0, 8)}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-slate-600 font-medium">
-                      <Calendar size={16} className="text-slate-300" />
-                      {new Date(attempt.completedAt).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-bold text-slate-900">
-                    {attempt.score} <span className="text-slate-400 font-normal">/ {attempt.maxScore}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 min-w-[60px] h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full ${accuracy >= 80 ? 'bg-emerald-500' : accuracy >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} 
-                          style={{ width: `${accuracy}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-bold text-slate-700">{accuracy}%</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest">
-                      {attempt.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Link 
-                      to={`/result/${attempt.id}`}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all group-hover:shadow-lg"
-                    >
-                      View Report
-                      <ArrowRight size={14} />
-                    </Link>
-                  </td>
-                </tr>
-              );
-            }) : (
-              <tr>
-                <td colSpan={6} className="px-6 py-24 text-center">
-                  <div className="max-w-xs mx-auto space-y-4">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-300">
-                      <History size={32} />
-                    </div>
-                    <p className="text-slate-500 font-medium">No previous exam attempts found. Take your first exam to start tracking your progress!</p>
-                    <Link to="/exams" className="inline-block px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold">Browse Exams</Link>
-                  </div>
-                </td>
+      <div className="bg-white rounded-[40px] border border-slate-200 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Competency Group</th>
+                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Timestamp</th>
+                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Metrics</th>
+                <th className="px-8 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {attempts.length > 0 ? attempts.map((attempt) => {
+                const exam = MOCK_EXAMS.find(e => e.id === attempt.examId);
+                const accuracy = Math.round((attempt.score / attempt.maxScore) * 100);
+                return (
+                  <tr key={attempt.id} className="hover:bg-slate-50 transition-colors group">
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-xl">{exam?.title[0]}</div>
+                        <div><p className="font-bold text-slate-900 leading-tight">{exam?.title}</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{exam?.category}</p></div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6"><div className="flex items-center gap-2 text-slate-600 font-bold text-sm"><Calendar size={16} className="text-slate-300" />{new Date(attempt.completedAt).toLocaleDateString()}</div></td>
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-4">
+                        <span className="font-black text-slate-900 text-lg">{attempt.score}<span className="text-slate-300 text-sm font-bold">/{attempt.maxScore}</span></span>
+                        <div className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">{accuracy}%</div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6 text-right"><Link to={`/result/${attempt.id}`} className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs hover:bg-indigo-600 hover:text-white transition-all">View Analytics <ArrowRight size={14} /></Link></td>
+                  </tr>
+                );
+              }) : (
+                <tr><td colSpan={4} className="px-8 py-24 text-center font-bold text-slate-400">No telemetry records found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
