@@ -1,0 +1,8 @@
+{
+  "name": "StudyFlow Pro v2.0",
+  "description": "Professional EdTech platform with AI-enhanced analytics and secure proctoring capabilities.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
